@@ -1,6 +1,7 @@
 import {createInterface} from "node:readline"
 import {styleText} from "node:util";
 import {aiAdapter} from "./ai-adapter.js"
+import {memoryRepository} from "./memory-repository.js"
 
 const rl = createInterface({
     input: process.stdin,
@@ -15,7 +16,10 @@ rl.on('line', async (line) => {
         role: 'user',
         content: line,
     }
-    const result = await aiAdapter.ask([message])
+    await memoryRepository.save([message])
+    const messages = await memoryRepository.get()
+    const result = await aiAdapter.ask(messages)
+    await memoryRepository.save([result])
 
     process.stdout.write(`${result.content}\n`)
 
