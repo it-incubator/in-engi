@@ -5,7 +5,7 @@ import {toolsRegistry} from "./tools-registry.js"
 const MAX_STEPS = 10
 
 export const agent = {
-    async run(prompt) {
+    async run(prompt, onLog) {
         await memoryRepository.save([prompt])
 
         const toolsMeta = Object.values(toolsRegistry).map((tool) => tool.meta)
@@ -21,12 +21,40 @@ export const agent = {
                 return content
             }
 
-            for (const tool of toolsCalls) {
-                const output = await toolsRegistry[tool.name].execute(tool.args)
-                await memoryRepository.save([{type: 'function_call_output', call_id: tool.call_id, output}])
+            for (const toolCall of toolsCalls) {
+                const output = await this._runTool(toolCall, onLog)
+
+                await memoryRepository.save([{
+                    type: 'function_call_output',
+                    call_id: toolCall.call_id,
+                    output
+                }])
             }
         }
 
         return 'Limit ❌, try again'
+    },
+
+    async _runTool(toolCall, onLog) {
+        const tool = toolsRegistry[toolCall.name]
+        const {args} = toolCall
+
+        if (onLog && tool.log?.start) {
+            await onLog(tool.log.start(args))
+        }
+
+        let output
+        let error
+        try {
+            output = await tool.execute(args)
+            return output
+        } catch (caughtError) {
+            error = caughtError
+            throw caughtError
+        } finally {
+            if (onLog && tool.log?.finish) {
+                await onLog(tool.log.finish(args, output, error))
+            }
+        }
     }
 }
