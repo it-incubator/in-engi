@@ -7,11 +7,11 @@ export const agent = {
         await memoryRepository.save([prompt])
         const messages = await memoryRepository.get()
 
-        const answer = await aiAdapter.ask(messages)
+        const tools = Object.values(toolsRegistry).map((tool) => tool.meta)
 
-        await memoryRepository.save([answer])
+        const answer = await aiAdapter.ask(messages, tools)
 
-
+        await memoryRepository.save(answer.originalItems)
 
         return answer
     }

@@ -3,7 +3,7 @@ const MODEL = 'gpt-6-luna'
 const OPENAI_API_KEY = process.env.OPENAI_API_KEY
 
 export const aiAdapter = {
-    async ask(messages) {
+    async ask(messages, tools = []) {
         const response = await fetch(API_URL, {
             method: 'POST',
             headers: {
@@ -13,6 +13,7 @@ export const aiAdapter = {
             body: JSON.stringify({
                 model: MODEL,
                 input: messages,
+                tools,
             })
         })
 
@@ -20,13 +21,16 @@ export const aiAdapter = {
         if (!response.ok) throw new Error(data.error?.message ?? `HTTP ${response.status}`)
 
         return {
-            role: 'assistant',
             content: data.output
                 .filter((item) => item.type === 'message')
                 .flatMap((item) => item.content)
                 .filter((part) => part.type === 'output_text')
                 .map((part) => part.text)
-                .join('')
+                .join(''),
+            tools: data.output
+                .filter((item) => item.type === 'function_call')
+                .map((item) => ({call_id: item.call_id, name: item.name, args: JSON.parse(item.arguments)})),
+            originalItems: data.output
         }
     }
 }
