@@ -2,17 +2,31 @@ import {aiAdapter} from "./ai-adapter.js"
 import {memoryRepository} from "./memory-repository.js"
 import {toolsRegistry} from "./tools-registry.js"
 
+const MAX_STEPS = 10
+
 export const agent = {
     async run(prompt) {
         await memoryRepository.save([prompt])
-        const messages = await memoryRepository.get()
 
-        const tools = Object.values(toolsRegistry).map((tool) => tool.meta)
+        const toolsMeta = Object.values(toolsRegistry).map((tool) => tool.meta)
 
-        const answer = await aiAdapter.ask(messages, tools)
+        for (let step = 0; step < MAX_STEPS; step++) {
+            const messages = await memoryRepository.get()
 
-        await memoryRepository.save(answer.originalItems)
+            const {content, toolsCalls, originalItems} = await aiAdapter.ask(messages, toolsMeta)
 
-        return answer
+            await memoryRepository.save(originalItems)
+
+            if (toolsCalls.length === 0) {
+                return content
+            }
+
+            for (const tool of toolsCalls) {
+                const output = await toolsRegistry[tool.name].execute(tool.args)
+                await memoryRepository.save([{type: 'function_call_output', call_id: tool.call_id, output}])
+            }
+        }
+
+        return 'Limit ❌, try again'
     }
 }

@@ -13,7 +13,7 @@ export const aiAdapter = {
             body: JSON.stringify({
                 model: MODEL,
                 input: messages,
-                tools,
+                tools: tools,
             })
         })
 
@@ -27,7 +27,7 @@ export const aiAdapter = {
                 .filter((part) => part.type === 'output_text')
                 .map((part) => part.text)
                 .join(''),
-            tools: data.output
+            toolsCalls: data.output
                 .filter((item) => item.type === 'function_call')
                 .map((item) => ({call_id: item.call_id, name: item.name, args: JSON.parse(item.arguments)})),
             originalItems: data.output

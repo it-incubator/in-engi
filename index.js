@@ -17,7 +17,7 @@ rl.on('line', async (line) => {
     }
     const result = await agent.run(message)
 
-    process.stdout.write(`${result.content}\n`)
+    process.stdout.write(`${result}\n`)
 
     rl.prompt()
 })
